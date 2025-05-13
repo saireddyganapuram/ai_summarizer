@@ -49,6 +49,7 @@ const Home = () => {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizResult, setQuizResult] = useState({ correct: 0, total: 0 });
   const [isFlipped, setIsFlipped] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Get current session data
   const currentSession = sessions[currentSessionIdx];
@@ -80,6 +81,23 @@ const Home = () => {
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
+    setUploadProgress(0);
+    
+    // Validate file types
+    const validTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'image/jpeg',
+      'image/png'
+    ];
+    
+    const invalidFiles = files.filter(file => !validTypes.includes(file.type));
+    if (invalidFiles.length > 0) {
+      setGenerationError(`Invalid file type(s): ${invalidFiles.map(f => f.name).join(', ')}`);
+      return;
+    }
+    
     setSessions(prev => {
       const updated = [...prev];
       updated[currentSessionIdx] = {
@@ -131,64 +149,63 @@ const Home = () => {
     setLoading(true);
 
     try {
-      // Prepare content based on input type
-      let contentToProcess = '';
+      let response;
       
-      // Check if there's text input
-      if (inputContent.trim()) {
-        contentToProcess = inputContent.trim();
-      }
-      
-      // Check if there's a link
-      if (currentSession.inputLink.trim()) {
-        contentToProcess += (contentToProcess ? '\n\n' : '') + `Link: ${currentSession.inputLink.trim()}`;
-      }
-      
-      // Check if there are uploaded files
+      // Handle file upload
       if (currentSession.uploadedFiles.length > 0) {
-        const fileNames = currentSession.uploadedFiles.map(file => file.name).join(', ');
-        contentToProcess += (contentToProcess ? '\n\n' : '') + `Uploaded Files: ${fileNames}`;
+        const formData = new FormData();
+        formData.append('file', currentSession.uploadedFiles[0]);
+        response = await generateStudyMaterials(formData);
+      }
+      // Handle link
+      else if (currentSession.inputLink.trim()) {
+        response = await generateStudyMaterials({ link: currentSession.inputLink.trim() });
+      }
+      // Handle text content
+      else if (inputContent.trim()) {
+        response = await generateStudyMaterials({ text: inputContent.trim() });
+      } else {
+        throw new Error('Please provide some content (text, link, or file) to generate study materials.');
       }
 
-      // Validate if we have any content to process
-      if (!contentToProcess) {
-        throw new Error('Please provide some content (text, link, or files) to generate study materials.');
-      }
-
-      if (contentToProcess.length < 10) {
-        throw new Error('Content is too short. Please provide more detailed text to generate quality study materials.');
-      }
-
-      // Generate study materials
-      const response = await generateStudyMaterials(contentToProcess);
       console.log("Raw response:", response.data);
 
       // Parse the response
       let studyMaterials;
       try {
-        // The response is an object with a 'response' property containing the JSON string
-        const responseStr = response.data.response;
-        console.log("Response string:", responseStr);
+        // Handle different response formats
+        const responseData = response.data.response;
+        console.log("Response string:", responseData);
+        
+        // Add validation for response format
+        if (!responseData) {
+          throw new Error('Empty response from server');
+        }
         
         // Remove the markdown code block markers and parse the JSON
-        const jsonStr = responseStr.replace(/```json\n|\n```/g, '');
+        const jsonStr = responseData.replace(/```json\n|\n```/g, '');
         console.log("Cleaned JSON string:", jsonStr);
         
-        // Parse the JSON string
-        const parsedData = JSON.parse(jsonStr);
-        console.log("Parsed data:", parsedData);
+        let parsedData;
+        try {
+          parsedData = JSON.parse(jsonStr);
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          throw new Error('Invalid JSON response from server');
+        }
+        
+        // Validate the structure of parsedData
+        if (!parsedData || typeof parsedData !== 'object') {
+          throw new Error('Invalid response format: Expected an object');
+        }
         
         studyMaterials = parsedData.studyMaterials;
-        console.log("Study materials:", studyMaterials);
-        
-        // Validate studyMaterials structure
         if (!studyMaterials || typeof studyMaterials !== 'object') {
-          console.error('Study materials is not an object:', studyMaterials);
-          throw new Error('Invalid response format: Study materials is not an object');
+          throw new Error('Invalid response format: Missing or invalid study materials');
         }
       } catch (error) {
         console.error('Failed to parse response:', error);
-        throw new Error('Invalid response format: Could not parse response data');
+        throw new Error(`Invalid response format: ${error.message}`);
       }
 
       if (!studyMaterials) {
@@ -340,6 +357,24 @@ const Home = () => {
   // Add a function to handle card flipping
   const handleCardFlip = () => {
     setIsFlipped(!isFlipped);
+  };
+
+  // Add this new function after handleFileChange
+  const handleClearInput = () => {
+    setInputContent('');
+    setSessions(prev => {
+      const updated = [...prev];
+      updated[currentSessionIdx] = {
+        ...updated[currentSessionIdx],
+        inputLink: '',
+        uploadedFiles: [],
+      };
+      return updated;
+    });
+    setGenerationError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Render dynamic content for the left column
@@ -706,7 +741,7 @@ const Home = () => {
           {activeTab === 'Input' ? (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-200 mb-2">Input Content</h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4" encType='multipart/form-data'>
                 <div className="space-y-4">
                   {/* Text Input */}
                   <div>
@@ -756,13 +791,23 @@ const Home = () => {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:bg-gray-600 disabled:cursor-not-allowed"
-                  disabled={isGenerating || (!inputContent.trim() && !currentSession.inputLink.trim() && currentSession.uploadedFiles.length === 0)}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Study Materials'}
-                </button>
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    disabled={isGenerating || (!inputContent.trim() && !currentSession.inputLink.trim() && currentSession.uploadedFiles.length === 0)}
+                  >
+                    {isGenerating ? 'Generating...' : 'Generate Study Materials'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={handleClearInput}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
+                  >
+                    Clear
+                  </button>
+                </div>
 
                 {generationError && (
                   <div className="text-red-500 text-sm mt-2">

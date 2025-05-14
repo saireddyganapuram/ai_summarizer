@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { FiChevronRight, FiEdit2, FiPlus, FiSend, FiPaperclip } from 'react-icons/fi';
 import { generateStudyMaterials } from '../services/studyMaterialsService';
 import FlashcardDisplay from '../components/FlashcardDisplay';
+import logo from '../assets/logo.png';
 
 const TABS = [
   'AI Notes',
@@ -697,9 +698,9 @@ const Home = () => {
     <div className="min-h-screen bg-[#18181b] flex flex-col">
       <style>{styles}</style>
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-8 py-4 bg-[#23232a] shadow-sm border-b border-gray-800">
+      <div className="flex items-center justify-between px-8 py-2 bg-[#23232a] shadow-sm border-b border-gray-800">
         <div className="flex items-center gap-4">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Bitmap_Logo.png" alt="Logo" className="w-8 h-8 rounded-full" />
+          <img src={logo} alt="Logo" className="w-16 h-16 rounded-full" />
           <span className="font-bold text-lg text-white">SnapStudy</span>
           <FiChevronRight className="mx-2 text-gray-400" />
           <span className="text-gray-400">Home</span>
@@ -715,7 +716,7 @@ const Home = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 px-8 pt-4 bg-[#23232a] border-b border-gray-800 items-center">
+      <div className="flex gap-2 px-8 py-1 bg-[#23232a] border-b border-gray-800 items-center">
         {ALL_TABS.map(tab => (
           <button
             key={tab}

@@ -13,6 +13,18 @@ const Login = () => {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
+  // useEffect(() => {
+  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
+  //     if (user) {
+  //       // User is signed in
+  //       navigate('/home');
+  //     }
+  //   });
+
+  //   // Cleanup subscription on unmount
+  //   return () => unsubscribe();
+  // }, [navigate]);
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -39,7 +51,7 @@ const Login = () => {
       // Firebase login uses email, so we treat username as email
       const { user, error } = await login(formData.username, formData.password);
       if (error) {
-        setFirebaseError(error);
+      setFirebaseError('Email or password is invalid');
       } else {
         setSuccess(true);
         setTimeout(() => navigate('/home'), 1500);

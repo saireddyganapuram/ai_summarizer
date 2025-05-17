@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   updateProfile,
   sendEmailVerification,
@@ -67,6 +67,11 @@ export const login = async (email, password) => {
 // Logout
 export const logout = async () => {
   try {
+    // Clear persisted auth state
+    localStorage.removeItem('authUser');
+    localStorage.removeItem('token');
+
+    // Sign out from Firebase
     await signOut(auth);
     return { error: null };
   } catch (error) {

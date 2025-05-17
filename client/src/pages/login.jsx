@@ -24,7 +24,7 @@ const Login = () => {
   //   // Cleanup subscription on unmount
   //   return () => unsubscribe();
   // }, [navigate]);
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -51,8 +51,17 @@ const Login = () => {
       // Firebase login uses email, so we treat username as email
       const { user, error } = await login(formData.username, formData.password);
       if (error) {
-      setFirebaseError('Email or password is invalid');
+        setFirebaseError('Email or password is invalid');
       } else {
+        // Persist auth state in localStorage
+        if (user) {
+          localStorage.setItem('authUser', JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName
+          }));
+        }
+
         setSuccess(true);
         setTimeout(() => navigate('/home'), 1500);
       }

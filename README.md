@@ -549,12 +549,6 @@ This project is licensed under the ISC License.
 
 ---
 
-## 👨‍💻 Author
-
-Built with ❤️ by [Your Name]
-
----
-
 ## 🙏 Acknowledgments
 
 - **Google Gemini AI** for powerful AI capabilities

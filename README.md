@@ -568,7 +568,6 @@ Built with ❤️ by [Your Name]
 
 For issues, questions, or suggestions:
 - Open an issue on GitHub
-- Contact: [your-email@example.com]
 
 ---
 
